@@ -1,0 +1,186 @@
+# ============================================================
+# GitHub Actions Workflow: Upload Windows .exe on Release
+# ============================================================
+#
+# PURPOSE
+# -------
+# Automatically build (or locate) your Windows .exe and attach
+# it as an asset to a GitHub Release whenever a release is
+# *published* (i.e. the "Publish release" button is clicked).
+#
+# HOW TO USE
+# ----------
+# 1. Read every TODO comment below and fill in the steps that
+#    match your project's build system.
+# 2. Commit this file to the default branch of your repository.
+# 3. Create or publish a GitHub Release – the workflow will run
+#    automatically and upload your .exe to that release.
+#
+# SUPPORTED BUILD SYSTEMS (examples provided below)
+# --------------------------------------------------
+#   • Python   → PyInstaller  (see "Build the .exe" step)
+#   • Go       → go build     (see "Build the .exe" step)
+#   • C# / .NET → dotnet publish (see "Build the .exe" step)
+#   • Pre-built → just commit the .exe and skip the build step
+#
+# ============================================================
+
+name: Upload Windows .exe on Release
+
+# ----------------------------------------------------------------
+# TRIGGER
+# -------
+# This workflow runs when a GitHub Release is *published*.
+# "released" covers normal releases; add "prereleased" if you
+# also want it to run for pre-releases.
+# ----------------------------------------------------------------
+on:
+  release:
+    types:
+      - released
+      # - prereleased   # ← uncomment to also run on pre-releases
+
+jobs:
+  upload-exe:
+    name: Build and upload Windows .exe
+    # Run on a Windows runner so native Windows tools are available.
+    # Change to ubuntu-latest if you cross-compile from Linux.
+    runs-on: windows-latest
+
+    steps:
+      # ----------------------------------------------------------
+      # 1. Check out the repository code
+      # ----------------------------------------------------------
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------
+      # 2. Set up the language / runtime
+      #    TODO: uncomment and edit the block that matches your
+      #          project, or delete all of them if you ship a
+      #          pre-built .exe committed to the repo.
+      # ----------------------------------------------------------
+
+      # ── Python (PyInstaller) ──────────────────────────────────
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.12"      # TODO: change to your Python version
+      #
+      # - name: Install Python dependencies
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     pip install pyinstaller
+      #     # TODO: also install your project's dependencies, e.g.:
+      #     # pip install -r requirements.txt
+
+      # ── Go ───────────────────────────────────────────────────
+      # - name: Set up Go
+      #   uses: actions/setup-go@v5
+      #   with:
+      #     go-version: "1.22"           # TODO: change to your Go version
+
+      # ── .NET / C# ────────────────────────────────────────────
+      # - name: Set up .NET
+      #   uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: "8.0.x"      # TODO: change to your .NET version
+
+      # ── Node.js (pkg / electron-builder / etc.) ───────────────
+      # - name: Set up Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "20"           # TODO: change to your Node version
+      #
+      # - name: Install Node dependencies
+      #   run: npm ci
+
+      # ----------------------------------------------------------
+      # 3. Build the .exe
+      #    TODO: replace the example commands with the ones that
+      #          actually produce your .exe.
+      #    After this step the .exe must exist at the path stored
+      #    in the EXE_PATH environment variable (set in step 4).
+      # ----------------------------------------------------------
+      - name: Build the .exe
+        run: |
+          # ── Python / PyInstaller example ──────────────────────
+          # pyinstaller --onefile src/main.py --name YourApp
+          # (output will be at dist\YourApp.exe)
+
+          # ── Go example ────────────────────────────────────────
+          # go build -o YourApp.exe ./cmd/yourapp
+
+          # ── .NET / C# example ─────────────────────────────────
+          # dotnet publish src/YourApp/YourApp.csproj \
+          #   -c Release -r win-x64 --self-contained true \
+          #   -p:PublishSingleFile=true -o publish/
+
+          # ── Node.js / pkg example ─────────────────────────────
+          # npx pkg . --targets node20-win-x64 --output YourApp.exe
+
+          # ── Pre-built .exe ────────────────────────────────────
+          # If you are committing a pre-built .exe directly to the
+          # repo, delete everything in this step and just make sure
+          # the file exists at the path you set in EXE_PATH below.
+
+          # TODO: replace this placeholder with your real build command
+          echo "TODO: add your build command here"
+        shell: bash   # remove this line if you prefer PowerShell
+
+      # ----------------------------------------------------------
+      # 4. Set the path and final asset name for the .exe
+      #    TODO: update EXE_PATH to point to the actual .exe that
+      #          was produced (or is already in the repo).
+      #    The ASSET_NAME is the filename shown in the release.
+      # ----------------------------------------------------------
+      - name: Set .exe path and asset name
+        id: exe_info
+        shell: bash
+        run: |
+          # TODO: change this to the real path of your .exe, e.g.:
+          #   dist/YourApp.exe          (PyInstaller)
+          #   YourApp.exe               (Go, root of repo)
+          #   publish/YourApp.exe       (.NET)
+          EXE_PATH="YourApp.exe"
+
+          # Asset name shown on the release page.
+          # Including the version tag is a good convention, e.g.:
+          #   fleek-load-base-v1.0.0-windows-x64.exe
+          ASSET_NAME="fleek-load-base-${{ github.event.release.tag_name }}-windows-x64.exe"
+
+          echo "exe_path=${EXE_PATH}"   >> "$GITHUB_OUTPUT"
+          echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
+
+      # ----------------------------------------------------------
+      # 5. Upload the .exe to the GitHub Release
+      #    No changes are usually needed here – it reads the
+      #    values set in the previous step automatically.
+      # ----------------------------------------------------------
+      - name: Upload .exe to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Path to the .exe built (or found) above
+          files: ${{ steps.exe_info.outputs.exe_path }}
+          # Rename the asset as it appears on the release page
+          # Note: softprops/action-gh-release uses the file's
+          # original name by default; to rename it, move the file
+          # first (see optional step below).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ----------------------------------------------------------
+      # OPTIONAL: Rename the .exe before uploading
+      # ----------------------------------------------------------
+      # If you want the asset name on the release to differ from
+      # the filename on disk, uncomment this step and move the
+      # "Upload .exe" step to run AFTER it.
+      #
+      # - name: Rename .exe for release asset
+      #   shell: bash
+      #   run: |
+      #     mv "${{ steps.exe_info.outputs.exe_path }}" \
+      #        "${{ steps.exe_info.outputs.asset_name }}"
+      #
+      # Then change the "files:" line in the upload step to:
+      #   files: ${{ steps.exe_info.outputs.asset_name }}

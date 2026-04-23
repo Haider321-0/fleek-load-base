@@ -47,6 +47,12 @@ jobs:
     # Change to ubuntu-latest if you cross-compile from Linux.
     runs-on: windows-latest
 
+    # Minimal permissions required:
+    #   contents: write  → needed to upload assets to the release
+    #   All other permissions default to "read" or "none".
+    permissions:
+      contents: write
+
     steps:
       # ----------------------------------------------------------
       # 1. Check out the repository code
@@ -124,8 +130,11 @@ jobs:
           # repo, delete everything in this step and just make sure
           # the file exists at the path you set in EXE_PATH below.
 
-          # TODO: replace this placeholder with your real build command
-          echo "TODO: add your build command here"
+          # TODO: replace this placeholder with your real build command.
+          # WARNING: the step below will FAIL until you replace this line,
+          # so you are reminded to customise the workflow before publishing.
+          echo "ERROR: No build command configured. Edit the 'Build the .exe' step." >&2
+          exit 1
         shell: bash   # remove this line if you prefer PowerShell
 
       # ----------------------------------------------------------
@@ -144,10 +153,10 @@ jobs:
           #   publish/YourApp.exe       (.NET)
           EXE_PATH="YourApp.exe"
 
-          # Asset name shown on the release page.
+          # TODO: change "YourApp" to your application's name.
           # Including the version tag is a good convention, e.g.:
-          #   fleek-load-base-v1.0.0-windows-x64.exe
-          ASSET_NAME="fleek-load-base-${{ github.event.release.tag_name }}-windows-x64.exe"
+          #   YourApp-v1.0.0-windows-x64.exe
+          ASSET_NAME="YourApp-${{ github.event.release.tag_name }}-windows-x64.exe"
 
           echo "exe_path=${EXE_PATH}"   >> "$GITHUB_OUTPUT"
           echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
@@ -160,12 +169,11 @@ jobs:
       - name: Upload .exe to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # Path to the .exe built (or found) above
+          # Path to the .exe built (or found) above.
+          # By default the file is uploaded using its original filename.
+          # To use a custom asset name, uncomment the optional rename step
+          # below and update this path to ${{ steps.exe_info.outputs.asset_name }}.
           files: ${{ steps.exe_info.outputs.exe_path }}
-          # Rename the asset as it appears on the release page
-          # Note: softprops/action-gh-release uses the file's
-          # original name by default; to rename it, move the file
-          # first (see optional step below).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
